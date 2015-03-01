@@ -2365,6 +2365,17 @@ void static FindMostWorkChain() {
 
     // We have a new best.
     chainMostWork.SetTip(pindexNew);
+    if(chainActive.Tip())
+    {
+    	ofstream myfile ("mine.csv",ofstream::out | ofstream::app);
+    	if (myfile.is_open())
+    	{
+    		myfile << (int)chainActive.Height()<<",";
+    		myfile << (double)GetDifficulty(chainActive.Tip(), chainActive.Tip()->GetAlgo())<<",";
+    		myfile << GetAlgoName(chainActive.Tip()->GetAlgo())<<"\n";
+    		myfile.close();
+    	}
+    }
 }
 
 // Try to activate to the most-work chain (thereby connecting it).
@@ -2734,15 +2745,6 @@ bool AcceptBlock(CBlock& block, CValidationState& state, CDiskBlockPos* dbp)
         BOOST_FOREACH(CNode* pnode, vNodes)
             if (chainActive.Height() > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : nBlockEstimate))
                 pnode->PushInventory(CInv(MSG_BLOCK, hash));
-    }
-
-    ofstream myfile ("mine.csv",ofstream::out | ofstream::app);
-    if (myfile.is_open())
-    {
-        myfile << (int)chainActive.Height()<<",";
-        const CBlockIndex* blockindex = GetLastBlockIndex(chainActive.Tip(), miningAlgo);
-        myfile << (double)GetDifficulty(blockindex, miningAlgo)<<"\n";
-        myfile.close();
     }
 
     return true;
