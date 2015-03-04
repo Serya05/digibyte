@@ -1205,7 +1205,7 @@ const CBlockIndex* GetLastBlockIndexForAlgo(const CBlockIndex* pindex, int algo)
     }
 }
 
-static const int64_t nDiffChangeTarget = 67200; // Patch effective @ block 67200
+
 static const int64_t patchBlockRewardDuration = 10080; // 10080 blocks main net change
 static const int64_t patchBlockRewardDuration2 = 80160; // 80160 blocks main net change
 //mulitAlgoTargetChange = 145000 located in main.h
@@ -1213,7 +1213,7 @@ static const int64_t patchBlockRewardDuration2 = 80160; // 80160 blocks main net
 int64_t GetDGBSubsidy(int nHeight) {
    // thanks to RealSolid & WDC for helping out with this code
 	int64_t qSubsidy;
-        if (nHeight < alwaysUpdateDiffChangeTarget)
+	if (nHeight < alwaysUpdateDiffChangeTarget)
    	{
 		qSubsidy = 8000*COIN;
    		int blocks = nHeight - nDiffChangeTarget;
@@ -1223,14 +1223,22 @@ int64_t GetDGBSubsidy(int nHeight) {
    	}
    	else
    	{
-	        qSubsidy = 2459*COIN;
+	    qSubsidy = 2459*COIN;
    		int blocks = nHeight - alwaysUpdateDiffChangeTarget;
    		int weeks = (blocks / patchBlockRewardDuration2)+1;
    		//decrease reward by 1% every month
    		for(int i = 0; i < weeks; i++)  qSubsidy -= (qSubsidy/100);
    	}
-   	return qSubsidy;
 	
+	if(nHeight<blockTimeChangeTarget)
+	{
+	}
+	else
+	{
+		qSubsidy=qSubsidy*10/25;//divide by 2.5
+	}
+
+	return qSubsidy;
 
 }
 
@@ -1273,12 +1281,12 @@ static const int64_t nTargetSpacingRe = 1*60; // 60 seconds
 static const int64_t nIntervalRe = nTargetTimespanRe / nTargetSpacingRe; // 1 block
 
 //MultiAlgo Target updates
-static const int64_t multiAlgoTargetTimespan = 150; // 2.5 minutes (NUM_ALGOS * 30 seconds)
 static const int64_t multiAlgoTargetSpacing = 150; // 2.5 minutes (NUM_ALGOS * 30 seconds)
-static const int64_t multiAlgoInterval = 1; // retargets every blocks
+static const int64_t multiAlgoTargetSpacingBlockTime = 60; // 1 minutes (NUM_ALGOS * 12 seconds)
 
 static const int64_t nAveragingInterval = 10; // 10 blocks
 static const int64_t nAveragingTargetTimespan = nAveragingInterval * multiAlgoTargetSpacing; // 25 minutes
+static const int64_t nAveragingTargetTimespanBlockTime = nAveragingInterval * multiAlgoTargetSpacingBlockTime; // 10 minutess
 
 static const int64_t nMaxAdjustDown = 40; // 40% adjustment down
 static const int64_t nMaxAdjustUp = 20; // 20% adjustment up
@@ -1286,8 +1294,6 @@ static const int64_t nMaxAdjustUp = 20; // 20% adjustment up
 static const int64_t nMaxAdjustDownV3 = 16; // 16% adjustment down
 static const int64_t nMaxAdjustUpV3 = 8; // 8% adjustment up
 static const int64_t nLocalDifficultyAdjustment = 4; // 4% down, 16% up
-
-static const int64_t nTargetTimespanAdjDown = multiAlgoTargetTimespan * (100 + nMaxAdjustDown) / 100;
 
 
 
@@ -1306,6 +1312,10 @@ static const int64_t nMaxActualTimespan = nAveragingTargetTimespan * (100 + nMax
 static const int64_t nMinActualTimespanV3 = nAveragingTargetTimespan * (100 - nMaxAdjustUpV3) / 100;
 static const int64_t nMaxActualTimespanV3 = nAveragingTargetTimespan * (100 + nMaxAdjustDownV3) / 100;
 
+
+static const int64_t nMinActualTimespanBlockTime = nAveragingTargetTimespanBlockTime * (100 - nMaxAdjustUpV3) / 100;
+static const int64_t nMaxActualTimespanBlockTime = nAveragingTargetTimespanBlockTime * (100 + nMaxAdjustDownV3) / 100;
+
 static unsigned int GetNextWorkRequiredV1(const CBlockIndex* pindexLast, const CBlockHeader *pblock, int algo)
 {
      unsigned int nProofOfWorkLimit = Params().ProofOfWorkLimit(algo).GetCompact();
@@ -1316,7 +1326,7 @@ static unsigned int GetNextWorkRequiredV1(const CBlockIndex* pindexLast, const C
     
     //set default to pre-v2.0 values
     int64_t retargetTimespan = nTargetTimespan;
-    int64_t retargetSpacing = nTargetSpacing;
+    //int64_t retargetSpacing = nTargetSpacing;
     int64_t retargetInterval = nInterval;
     
     // Genesis block
@@ -1326,7 +1336,7 @@ static unsigned int GetNextWorkRequiredV1(const CBlockIndex* pindexLast, const C
    if(fNewDifficultyProtocol) {
       LogPrintf("GetNextWorkRequired nActualTimespan Limiting\n");
       retargetTimespan = nTargetTimespanRe;
-      retargetSpacing = nTargetSpacingRe;
+      //retargetSpacing = nTargetSpacingRe;
       retargetInterval = nIntervalRe;
     }
 
@@ -1501,16 +1511,37 @@ static unsigned int GetNextWorkRequiredV3(const CBlockIndex* pindexLast, const C
     int64_t nActualTimespan = pindexLast->GetMedianTimePast() - pindexFirst->GetMedianTimePast();
     nActualTimespan = nAveragingTargetTimespan + (nActualTimespan - nAveragingTargetTimespan)/6;
     LogPrintf("  nActualTimespan = %d before bounds\n", nActualTimespan);
-    if (nActualTimespan < nMinActualTimespanV3)
-        nActualTimespan = nMinActualTimespanV3;
-    if (nActualTimespan > nMaxActualTimespanV3)
-        nActualTimespan = nMaxActualTimespanV3;
+
+    if(pindexLast->nHeight<blockTimeChangeTarget)
+    {
+        if (nActualTimespan < nMinActualTimespanV3)
+            nActualTimespan = nMinActualTimespanV3;
+        if (nActualTimespan > nMaxActualTimespanV3)
+            nActualTimespan = nMaxActualTimespanV3;
+    }
+    else
+    {
+        if (nActualTimespan < nMinActualTimespanBlockTime)
+            nActualTimespan = nMinActualTimespanBlockTime;
+        if (nActualTimespan > nMaxActualTimespanBlockTime)
+            nActualTimespan = nMaxActualTimespanBlockTime;
+    }
 
     // Global retarget
     CBigNum bnNew;
     bnNew.SetCompact(pindexPrevAlgo->nBits);
     bnNew *= nActualTimespan;
-    bnNew /= nAveragingTargetTimespan;
+
+
+    if(pindexLast->nHeight<blockTimeChangeTarget)
+    {
+        bnNew /= nAveragingTargetTimespan;
+    }
+    else
+    {
+        bnNew /= nAveragingTargetTimespanBlockTime;
+
+    }
 
     // Per-algo retarget
     int nAdjustments = pindexPrevAlgo->nHeight - pindexLast->nHeight + NUM_ALGOS - 1;
@@ -1587,8 +1618,7 @@ bool IsInitialBlockDownload()
         pindexLastBest = chainActive.Tip();
         nLastUpdate = GetTime();
     }
-    return (GetTime() - nLastUpdate < 10 &&
-            chainActive.Tip()->GetBlockTime() < GetTime() - 24 * 60 * 60);
+    return (GetTime() - nLastUpdate < 10 && chainActive.Tip()->GetBlockTime() < GetTime() - 24 * 60 * 60);
 }
 
 bool fLargeWorkForkFound = false;
