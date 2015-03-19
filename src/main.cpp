@@ -1661,12 +1661,12 @@ void CheckForkWarningConditionsOnNewFork(CBlockIndex* pindexNewForkTip)
     }
 
     // We define a condition which we should warn the user about as a fork of at least 20 blocks
-    // who's tip is within 72 blocks (+/- 12 hours if no one mines it) of ours
-    // We use 7 blocks rather arbitrarily as it represents just under 10% of sustained network
+    // who's tip is within 72 blocks (+/- 36 mins if no one mines it) of ours
+    // We use 20 blocks rather arbitrarily as it represents just under 10% of sustained network
     // hash rate operating on the fork.
     // or a chain that is entirely longer than ours and invalid (note that this should be detected by both)
     // We define it this way because it allows us to only store the highest fork tip (+ base) which meets
-    // the 7-block condition and from this always have the most-likely-to-cause-warning fork
+    // the 20-block condition and from this always have the most-likely-to-cause-warning fork
     if (pfork && (!pindexBestForkTip || (pindexBestForkTip && pindexNewForkTip->nHeight > pindexBestForkTip->nHeight)) &&
             pindexNewForkTip->nChainWork - pfork->nChainWork > (pfork->GetBlockWorkAdjusted() * 20).getuint256() &&
             chainActive.Height() - pindexNewForkTip->nHeight < 72)
@@ -2342,7 +2342,8 @@ void static FindMostWorkChain() {
             if (pindexTest->nStatus & BLOCK_FAILED_MASK) {
                 // Candidate has an invalid ancestor, remove entire chain from the set.
                 if (pindexBestInvalid == NULL || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
-                    pindexBestInvalid = pindexNew;                CBlockIndex *pindexFailed = pindexNew;
+                    pindexBestInvalid = pindexNew;
+                CBlockIndex *pindexFailed = pindexNew;
                 while (pindexTest != pindexFailed) {
                     pindexFailed->nStatus |= BLOCK_FAILED_CHILD;
                     setBlockIndexValid.erase(pindexFailed);
