@@ -1203,6 +1203,7 @@ const CBlockIndex* GetLastBlockIndexForAlgo(const CBlockIndex* pindex, int algo)
             return pindex;
         pindex = pindex->pprev;
     }
+    return NULL;
 }
 
 

@@ -999,7 +999,7 @@ private:
     unsigned char chRejectCode;
     bool corruptionPossible;
 public:
-    CValidationState() : mode(MODE_VALID), nDoS(0), corruptionPossible(false) {}
+    CValidationState() : mode(MODE_VALID), nDoS(0), corruptionPossible(false), chRejectCode(0) {}
     bool DoS(int level, bool ret = false,
              unsigned char chRejectCodeIn=0, std::string strRejectReasonIn="",
              bool corruptionIn=false) {
